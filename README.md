@@ -1,143 +1,128 @@
-# fichero-printer
+# Fichero Local
 
-Web GUI, Python CLI, and protocol documentation for the Fichero D11s thermal label printer.
+A local-first fork/modification of [`0xMH/fichero-printer`](https://github.com/0xMH/fichero-printer) for the Fichero D11s / AiYin D11s Bluetooth thermal label printer.
 
-Blog post: [Reverse Engineering Action's Cheap Fichero Labelprinter](https://blog.dbuglife.com/reverse-engineering-fichero-label-printer/)
+The goal of this fork is to keep the existing browser label designer while making it convenient to run entirely from your own computer, with direct browser-to-printer Bluetooth communication and no cloud backend.
 
-The [Fichero](https://www.action.com/nl-nl/p/3212141/fichero-labelprinter/) is a cheap Bluetooth thermal label printer sold at Action. Internally it's an AiYin D11s made by Xiamen Print Future Technology. The official app is closed-source and doesn't expose the protocol, so this project reverse-engineers it from the decompiled APK.
+## What this fork adds
 
-## The printer
+- Local-only browser hosting on `127.0.0.1`
+- No application backend or account requirement
+- No CDN/runtime dependency for the built web application
+- Browser batch printing of multiple image files while keeping the Bluetooth connection open
+- Existing upstream CSV / multi-page batch workflow retained
+- Python CLI support for printing multiple image paths in one connected session, based on upstream [PR #18](https://github.com/0xMH/fichero-printer/pull/18)
+- A local diagnostics page for checking Web Bluetooth, secure-context support, Canvas and browser storage
 
-- 96px wide printhead, 203 DPI
-- Prints 1-bit raster images onto self-adhesive labels (14mm x 30mm default)
-- Connects via BLE or Classic Bluetooth SPP
-- 18500 Li-Ion battery (1200mAh), USB-C charging
-- Bluetooth names: `FICHERO_5836`, `D11s_`
+## What remains upstream
 
-## Why not just use the app?
+This project is based on the original Fichero work by [`0xMH`](https://github.com/0xMH/fichero-printer), including:
 
-The Fichero app (`com.lj.fichero`) asks for 26 permissions. For a label printer. The notable ones:
+- Reverse-engineered Fichero/AiYin D11s BLE protocol
+- Svelte 5 + Fabric.js label designer
+- Text, image, barcode and QR-code label editing
+- Direct Web Bluetooth printing
+- Python CLI and printer protocol implementation
+- Protocol documentation
 
-```
-ACCESS_FINE_LOCATION         Your precise GPS location
-ACCESS_COARSE_LOCATION       Your approximate location
-CAMERA                       Your camera
-READ_EXTERNAL_STORAGE        Your files
-WRITE_EXTERNAL_STORAGE       Your files (write)
-READ_MEDIA_IMAGES            Your photos
-INTERNET                     Full internet access
-ACCESS_WIFI_STATE            Your WiFi info
-CHANGE_WIFI_STATE            Change your WiFi settings
-CHANGE_WIFI_MULTICAST_STATE  Multicast on your network
-AD_ID                        Your advertising ID
-ACCESS_ADSERVICES_AD_ID      More ad tracking
-ACCESS_ADSERVICES_ATTRIBUTION  Ad attribution tracking
-BIND_GET_INSTALL_REFERRER    Where you installed from
-```
+See [ATTRIBUTION.md](ATTRIBUTION.md) for details.
 
-Some of these are reasonable. The location permissions exist because of how Android handles Bluetooth. Bluetooth signals can reveal where you physically are, think retail stores using Bluetooth beacons to track which aisle you're standing in. So Android won't let any app scan for Bluetooth devices unless it also has location permission. That's not the app being sneaky. That's Android being cautious.
+## Current status
 
-The camera makes sense too. The app lets you scan barcodes and photograph things to print on labels.
+The local modification line is currently **v1.3**.
 
-The WiFi permissions are baggage from the underlying SDK. It powers over 159 different printer models, some of which connect over WiFi. The Fichero doesn't use WiFi at all, but the permissions are baked into the shared code.
+### Verified
 
-Then there are four permissions that have nothing to do with printing. Your advertising ID is a unique number assigned to your phone that follows you across every app, letting ad networks build a profile of what you do. The app also wants ad attribution tracking (which apps you installed after seeing an ad) and your install referrer (how you found the app store listing). That's a label printer quietly feeding your activity to an ad network.
+- Dependencies install successfully with `npm ci`
+- Production web build completes successfully with Vite
+- Local static server starts and binds only to `127.0.0.1`
+- Built application assets are served locally
+- Installer can be applied repeatedly without intentionally duplicating patches
 
-The package name is `com.lj.fichero` but the SDK inside is from a company called LuckPrinter (`com.luckprinter.sdk_new`). The app is what's called a white-label product: a generic app rebranded with the Fichero name and logo. The same codebase runs receipt printers, A4 thermal printers, and industrial label makers. It supports 159+ printer models across four manufacturers. Your little label printer's app is just a skin on top.
+### Still requiring real-device confirmation
 
-One more reason to ditch the app and talk to the printer directly.
+The v1.3 browser runtime and Bluetooth printing should be tested on a real Fichero printer before this fork is described as production-ready. Earlier v1.2 testing exposed a browser initialization regression caused by an added CSP/service-worker layer; v1.3 removes that layer and returns to the upstream browser runtime model.
 
-## Web GUI
+If you are evaluating the project, see [TESTING.md](TESTING.md).
 
-Try it at https://0xmh.github.io/fichero-printer/ - a full label designer with text, images, barcodes, QR codes, and drag-and-drop canvas editing. Built with Svelte 5 and Fabric.js, ported from the NiimBlue project (MIT).
+## Requirements
 
-Click the Bluetooth icon, pair with the printer, and start designing. Labels save to browser localStorage. Export as JSON or PNG.
+For the browser application:
 
-Requires Web Bluetooth, so Chrome/Edge/Opera only. Firefox and Safari don't support it.
+- Windows, macOS or Linux desktop
+- A Bluetooth adapter supported by the operating system/browser
+- Chrome or Edge with Web Bluetooth support
+- Node.js and npm for building/serving the local web application
+- Fichero D11s / compatible AiYin printer
 
-## CLI Setup
+Firefox and Safari do not currently provide the Web Bluetooth support required by this application.
 
-Requires Python 3.10+ and uv. Turn on the printer and run:
+## Quick start
 
-```
-uv run fichero info
-```
+From the `web` directory:
 
-This auto-discovers the printer via BLE scan. To skip scanning on subsequent runs, find your printer's address from the scan output and save it:
-
-```
-export FICHERO_ADDR=AA:BB:CC:DD:EE:FF
+```text
+npm ci
+npm run build
+npm run serve:local
 ```
 
-You can also pass it per-command:
+Then open:
 
-```
-uv run fichero --address AA:BB:CC:DD:EE:FF info
-```
-
-## CLI Usage
-
-```
-uv run fichero --help
+```text
+http://localhost:4174
 ```
 
-### Printing
+For a complete clean-install procedure, see [INSTALL.md](INSTALL.md).
 
-```
-uv run fichero text "Hello World"
-uv run fichero text "Fragile" --density 2 --copies 3
-uv run fichero text "Big Label" --font-size 40 --label-height 180
-uv run fichero image label.png
-uv run fichero image label.png --density 1 --copies 2
-```
+## Local diagnostics
 
-Density: 0=light, 1=medium (default), 2=thick.
+When the local server is running, open:
 
-Text labels accept `--font-size` (default 24) and `--label-height` in pixels (default 240).
-
-### Device info
-
-```
-uv run fichero info
-uv run fichero status
+```text
+http://localhost:4174/local-diagnostics.html
 ```
 
-### Settings
+The diagnostics page checks:
 
-```
-uv run fichero set density 2
-uv run fichero set shutdown 30
-uv run fichero set paper gap
-```
+- whether the page is a secure context
+- whether `navigator.bluetooth` is available
+- whether Canvas 2D is available
+- whether `localStorage` works
+- whether an old service worker controls the origin
+- whether the browser can open a Bluetooth device picker
 
-- `density` - how dark the print is. 0 is faint, 1 is normal, 2 is the darkest. Higher density uses more battery and can smudge on some label stock.
-- `shutdown` - how many minutes the printer waits before turning itself off when idle (1-480). Set it higher if you're tired of turning it back on between prints.
-- `paper` - what kind of label stock you're using. `gap` is the default, for labels with spacing between them (the printer detects the gap to know where to stop). `black` is for rolls with a black mark between labels. `continuous` is for receipt-style rolls with no markings.
+## Privacy model
 
-## Library Usage
+Normal use of the local build does not require a cloud service. The browser communicates with the printer directly through Web Bluetooth, while the Node process serves static files from the local `web/dist` directory.
 
-```python
-import asyncio
-from fichero import connect, PrinterNotFound
+See [PRIVACY.md](PRIVACY.md) for the exact scope and caveats.
 
-async def main():
-    async with connect() as pc:
-        info = await pc.get_info()
-        print(info)
+## Documentation
 
-asyncio.run(main())
-```
+- [INSTALL.md](INSTALL.md) — installation, build and local launch
+- [TESTING.md](TESTING.md) — browser and printer verification checklist
+- [CHANGELOG.md](CHANGELOG.md) — local modification history
+- [ATTRIBUTION.md](ATTRIBUTION.md) — upstream and contributor attribution
+- [PRIVACY.md](PRIVACY.md) — local/privacy model
+- [GITHUB.md](GITHUB.md) — suggested GitHub repository setup
 
-The package exports `PrinterClient`, `connect`, `PrinterError`, `PrinterNotFound`, `PrinterTimeout`, `PrinterNotReady`, and `PrinterStatus`.
+## Upstream project
 
-## TODO
+Original project:
 
-- [ ] Emoji support in text labels. The default Pillow font has no emoji glyphs, so they render as squares. Needs two-pass rendering: split text into emoji/non-emoji segments, render emoji with Apple Color Emoji (macOS) or Noto Color Emoji (Linux) using `embedded_color=True`, then composite onto the label.
+https://github.com/0xMH/fichero-printer
 
-## Protocol and reverse engineering
+Protocol documentation:
 
-See [docs/PROTOCOL.md](docs/PROTOCOL.md) for the full command reference, print sequence, and how this was reverse-engineered.
+https://github.com/0xMH/fichero-printer/blob/main/docs/PROTOCOL.md
+
+Multiple-image CLI work used as a basis:
+
+https://github.com/0xMH/fichero-printer/pull/18
 
 ## License
 
-MIT
+The upstream project identifies itself as **MIT licensed**. Preserve the upstream copyright/license notices and any third-party notices when redistributing this fork.
+
+This repository contains modifications and documentation around the upstream project; it does not change the license of upstream or third-party code.
