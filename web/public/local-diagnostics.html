@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fichero Local diagnostics</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem">
+<h1>Fichero Local diagnostics</h1>
+<pre id="out">Running…</pre>
+<button id="bt" type="button">Test Bluetooth device picker</button>
+<script type="module">
+const rows = [];
+const add = (k,v) => rows.push(`${k}: ${v}`);
+add('URL', location.href);
+add('secureContext', window.isSecureContext);
+add('navigator.bluetooth', 'bluetooth' in navigator);
+add('localStorage', (() => { try { localStorage.setItem('__fichero_test','1'); localStorage.removeItem('__fichero_test'); return 'ok'; } catch (e) { return String(e); } })());
+add('canvas2d', !!document.createElement('canvas').getContext('2d'));
+add('serviceWorker controller', navigator.serviceWorker?.controller ? 'yes' : 'no');
+document.querySelector('#out').textContent = rows.join('\n');
+document.querySelector('#bt').disabled = !('bluetooth' in navigator);
+document.querySelector('#bt').addEventListener('click', async () => {
+  try { await navigator.bluetooth.requestDevice({ acceptAllDevices: true }); alert('Bluetooth picker works.'); }
+  catch (e) { alert(`${e.name}: ${e.message}`); }
+});
+</script>
+</body>
+</html>

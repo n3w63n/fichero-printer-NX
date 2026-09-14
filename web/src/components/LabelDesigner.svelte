@@ -27,6 +27,7 @@
   import MdIcon from "$/components/basic/MdIcon.svelte";
   import ObjectPicker from "$/components/designer-controls/ObjectPicker.svelte";
   import PrintPreview from "$/components/PrintPreview.svelte";
+  import BatchImagePrint from "$/components/BatchImagePrint.svelte";
   import QrCodeParamsPanel from "$/components/designer-controls/QRCodeParamsControls.svelte";
   import TextParamsControls from "$/components/designer-controls/TextParamsControls.svelte";
   import VariableInsertControl from "$/components/designer-controls/VariableInsertControl.svelte";
@@ -42,6 +43,7 @@
   let fabricCanvas = $state<CustomCanvas>();
   let labelProps = $state<LabelProps>(DEFAULT_LABEL_PROPS);
   let previewOpened = $state<boolean>(false);
+  let batchImagesOpened = $state<boolean>(false);
   let selectedObject = $state<fabric.FabricObject | undefined>(undefined);
   let selectedCount = $state<number>(0);
   let editRevision = $state<number>(0);
@@ -480,6 +482,10 @@
         <IconPicker onSubmit={onIconPicked} onSubmitSvg={onSvgIconPicked} />
         <ObjectPicker onSubmit={onObjectPicked} {labelProps} {zplImageReady} />
 
+        <button class="btn btn-sm btn-secondary ms-1" onclick={() => batchImagesOpened = true} title="Print several image files in one Bluetooth session">
+          <MdIcon icon="collections" />
+          Batch images
+        </button>
         <button class="btn btn-sm btn-primary ms-1" onclick={openPreview}>
           <MdIcon icon="visibility" />
           {$tr("editor.preview")}
@@ -543,6 +549,9 @@
       {printNow}
       {csvEnabled}
       csvData={$csvData.data} />
+  {/if}
+  {#if batchImagesOpened}
+    <BatchImagePrint bind:show={batchImagesOpened} {labelProps} />
   {/if}
 </div>
 
